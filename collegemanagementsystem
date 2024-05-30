@@ -1,0 +1,191 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_NAME_LENGTH 100
+#define FILE_NAME "students.dat"
+
+typedef struct {
+    int id;
+    char name[MAX_NAME_LENGTH];
+    int age;
+    char course[MAX_NAME_LENGTH];
+} Student;
+
+void addStudent();
+void viewStudents();
+void updateStudent();
+void deleteStudent();
+int getNewId();
+
+int main() {
+    int choice;
+
+    while (1) {
+        printf("\nCollege Management System\n");
+        printf("1. Add Student\n");
+        printf("2. View Students\n");
+        printf("3. Update Student\n");
+        printf("4. Delete Student\n");
+        printf("5. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                addStudent();
+                break;
+            case 2:
+                viewStudents();
+                break;
+            case 3:
+                updateStudent();
+                break;
+            case 4:
+                deleteStudent();
+                break;
+            case 5:
+                exit(0);
+            default:
+                printf("Invalid choice! Please try again.\n");
+        }
+    }
+    return 0;
+}
+
+void addStudent() {
+    FILE *file = fopen(FILE_NAME, "ab");
+    if (file == NULL) {
+        printf("Error opening file!\n");
+        return;
+    }
+
+    Student student;
+    student.id = getNewId();
+
+    printf("Enter name: ");
+    getchar(); // to consume the newline character left by scanf
+    fgets(student.name, MAX_NAME_LENGTH, stdin);
+    student.name[strcspn(student.name, "\n")] = '\0'; // remove newline character
+
+    printf("Enter age: ");
+    scanf("%d", &student.age);
+
+    printf("Enter course: ");
+    getchar(); // to consume the newline character left by scanf
+    fgets(student.course, MAX_NAME_LENGTH, stdin);
+    student.course[strcspn(student.course, "\n")] = '\0'; // remove newline character
+
+    fwrite(&student, sizeof(Student), 1, file);
+    fclose(file);
+
+    printf("Student added successfully!\n");
+}
+
+void viewStudents() {
+    FILE *file = fopen(FILE_NAME, "rb");
+    if (file == NULL) {
+        printf("Error opening file!\n");
+        return;
+    }
+
+    Student student;
+    printf("\n%-5s %-20s %-5s %-20s\n", "ID", "Name", "Age", "Course");
+    printf("---------------------------------------------------------\n");
+    while (fread(&student, sizeof(Student), 1, file)) {
+        printf("%-5d %-20s %-5d %-20s\n", student.id, student.name, student.age, student.course);
+    }
+    fclose(file);
+}
+
+void updateStudent() {
+    int id;
+    printf("Enter student ID to update: ");
+    scanf("%d", &id);
+
+    FILE *file = fopen(FILE_NAME, "rb+");
+    if (file == NULL) {
+        printf("Error opening file!\n");
+        return;
+    }
+
+    Student student;
+    int found = 0;
+    while (fread(&student, sizeof(Student), 1, file)) {
+        if (student.id == id) {
+            found = 1;
+            printf("Enter new name: ");
+            getchar(); // to consume the newline character left by scanf
+            fgets(student.name, MAX_NAME_LENGTH, stdin);
+            student.name[strcspn(student.name, "\n")] = '\0'; // remove newline character
+
+            printf("Enter new age: ");
+            scanf("%d", &student.age);
+
+            printf("Enter new course: ");
+            getchar(); // to consume the newline character left by scanf
+            fgets(student.course, MAX_NAME_LENGTH, stdin);
+            student.course[strcspn(student.course, "\n")] = '\0'; // remove newline character
+
+            fseek(file, -sizeof(Student), SEEK_CUR);
+            fwrite(&student, sizeof(Student), 1, file);
+            printf("Student updated successfully!\n");
+            break;
+        }
+    }
+    if (!found) {
+        printf("Student with ID %d not found!\n", id);
+    }
+    fclose(file);
+}
+
+void deleteStudent() {
+    int id;
+    printf("Enter student ID to delete: ");
+    scanf("%d", &id);
+
+    FILE *file = fopen(FILE_NAME, "rb");
+    FILE *tempFile = fopen("temp.dat", "wb");
+    if (file == NULL || tempFile == NULL) {
+        printf("Error opening file!\n");
+        return;
+    }
+
+    Student student;
+    int found = 0;
+    while (fread(&student, sizeof(Student), 1, file)) {
+        if (student.id == id) {
+            found = 1;
+        } else {
+            fwrite(&student, sizeof(Student), 1, tempFile);
+        }
+    }
+    fclose(file);
+    fclose(tempFile);
+
+    remove(FILE_NAME);
+    rename("temp.dat", FILE_NAME);
+
+    if (found) {
+        printf("Student deleted successfully!\n");
+    } else {
+        printf("Student with ID %d not found!\n", id);
+    }
+}
+
+int getNewId() {
+    FILE *file = fopen(FILE_NAME, "rb");
+    if (file == NULL) {
+        return 1;
+    }
+
+    Student student;
+    int id = 0;
+    while (fread(&student, sizeof(Student), 1, file)) {
+        if (student.id > id) {
+            id = student.id;
+        }
+    }
+    fclose(file);
+    return id + 1;
+}
